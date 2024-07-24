@@ -2,6 +2,7 @@ const parser = require("@babel/parser");
 const fs = require("fs");
 const traverse = require("@babel/traverse").default;
 const path = require("path");
+const babel = require("@babel/core");
 
 /**
  * 获取JS源文件的抽象语法树
@@ -35,10 +36,15 @@ function getAsset(filename) {
   const ast = getAST(filename);
   const dependencies = getImports(ast);
   const id = ID++;
+  // 编译
+  const { code } = babel.transformFromAstSync(ast, null, {
+    presets: ["@babel/env"],
+  });
   return {
     id,
     filename,
     dependencies,
+    code,
   };
 }
 
@@ -68,5 +74,44 @@ const mainAsset = getAsset("./src/entry.js");
 console.log(mainAsset);
 */
 
+/**
+ * 打包
+ * @param {Array} graph 依赖关系图
+ */
+function bundle(graph) {
+  let modules = "";
+
+  // 将依赖关系图中模块编译后的代码、模块路径和id的映射关系传入IIFE
+  graph.forEach((mod) => {
+    modules += `${mod.id}:[
+     function (require, module, exports) { ${mod.code}},
+     ${JSON.stringify(mod.mapping)}
+   ],`;
+  });
+
+  const bundledCode = `
+   (function (modules) {
+
+     function require(id) {
+       const [fn, mapping] = modules[id];
+
+       function localRequire(relPath) {
+         return require(mapping[relPath]);
+       }
+
+       const localModule = { exports : {} };
+       
+       fn(localRequire, localModule, localModule.exports);
+
+       return localModule.exports;
+     }
+
+     require(0);
+
+   })({${modules}})
+ `;
+  fs.writeFileSync("./main.js", bundledCode);
+}
+
 const graph = createGraph("./src/entry.js");
-console.log(graph);
+bundle(graph);
