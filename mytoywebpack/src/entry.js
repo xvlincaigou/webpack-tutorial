@@ -1,3 +1,3 @@
-import greeting from './greeting.js';
+import greeting from './greetings.js';
 
 console.log(greeting);

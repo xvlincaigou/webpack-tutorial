@@ -1,6 +1,7 @@
 const parser = require("@babel/parser");
 const fs = require("fs");
 const traverse = require("@babel/traverse").default;
+const path = require("path");
 
 /**
  * 获取JS源文件的抽象语法树
@@ -37,9 +38,35 @@ function getAsset(filename) {
   return {
     id,
     filename,
-    dependencies
-  }
+    dependencies,
+  };
 }
 
-const mainAsset = getAsset('./src/entry.js');
+/**
+ * 生成依赖关系图
+ * @param {String} entry 入口文件路径
+ */
+function createGraph(entry) {
+  const mainAsset = getAsset(entry);
+  const queue = [mainAsset];
+
+  for (const asset of queue) {
+    const dirname = path.dirname(asset.filename);
+    asset.mapping = {};
+    asset.dependencies.forEach((relPath, index) => {
+      const absPath = path.join(dirname, relPath);
+      const child = getAsset(absPath);
+      asset.mapping[relPath] = child.id;
+      queue.push(child);
+    });
+  }
+
+  return queue;
+}
+/*
+const mainAsset = getAsset("./src/entry.js");
 console.log(mainAsset);
+*/
+
+const graph = createGraph("./src/entry.js");
+console.log(graph);
