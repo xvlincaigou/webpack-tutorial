@@ -1,5 +1,7 @@
 # Webpack
 
+[仓库地址](https://github.com/xvlincaigou/webpack-tutorial)
+
 ## Webpack 简介
 
 大家好，由我来为大家讲解 Webpack 的入门知识。
@@ -64,7 +66,31 @@ cd demo1
 npm init -y
 ```
 
-npm init -y 用于快速初始化一个新的 Node.js 项目。这个命令会自动生成一个 package.json 文件，该文件包含了项目的基本信息。使用-y 或--yes 选项会让 npm init 使用默认值自动填充 package.json 文件的内容。后续可以根据需要编辑 package.json 文件来添加或修改项目信息。
+npm init -y 用于快速初始化一个新的项目。这个命令会自动生成一个 package.json 文件，该文件包含了项目的基本信息。使用-y 或--yes 选项会让 npm init 使用默认值自动填充 package.json 文件的内容。后续可以根据需要编辑 package.json 文件来添加或修改项目信息。
+
+```javascript
+//a.js
+import { name } from "./b.js";
+console.log(name);
+```
+
+```javascript
+//b.js
+export const name = "Mamba";
+```
+
+```html
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Document</title>
+    <script src="./a.js"></script>
+  </head>
+  <body></body>
+</html>
+```
 
 ##### 第一次出错
 
@@ -72,14 +98,12 @@ npm init -y 用于快速初始化一个新的 Node.js 项目。这个命令会�
 
 你提供的 JavaScript 代码在一个不支持 ES 模块的环境中执行!
 
-为了使用 `import` 语句，你需要确保你的 JavaScript 文件被视为模块。
+为了使用 `import` 语句，你需要确保你的 JavaScript 文件被视为模块。而在浏览器环境中，默认情况下一个.js 文件被视为一个普通的脚本而不是模块。
 
 我们如何解决这个问题？
 
-1. 在导入 JavaScript 文件的 HTML `<script>` 标签中添加 `type="module"` 属性。
-2. 使用类似 Webpack 或 Rollup 的打包工具，将你的 JavaScript 文件打包成一个可以在浏览器环境中执行的单个文件。
-
-后者的优越性在哪里？
+1. 在导入 JavaScript 文件的 HTML `<script>` 标签中添加 `type="module"` 属性。（由于浏览器的同源策略，在我们这个案例当中，你还需要下载 vscode 的 live-server 插件，用这个插件打开 index.html）
+2. 使用 Webpack ，将你的全部 JavaScript 文件打包成可以在浏览器环境中执行的单个文件。
 
 ##### 安装 webpack 和 webpack-cli
 
@@ -103,7 +127,7 @@ npx webpack ./a.js 使用 npx 来执行 webpack 命令，以./a.js 作为入口�
 
 npx: npx 允许你运行在本地 node_modules/.bin 目录或全局安装的 npm 包中的命令。使用 npx 的好处之一是，你可以运行项目中安装的包的命令，而不需要全局安装这些包。
 
-./a.js: 这是 webpack 命令的参数，指定了打包的入口文件。webpack 将从 a.js 文件开始，分析依赖关系，然后打包这个文件以及它依赖的所有模块。
+./a.js: 这是 webpack 命令的参数，指定了打包的入口文件。webpack 将从 a.js 文件开始，分析依赖关系，然后打包这个文件以及它依赖的所有模块。在我们的这个 demo1 当中，由于 index.html 直接使用的是 a.js，并且 a.js 依赖于 b.js，所以我们要让 a.js 作为入口。
 
 ##### webpack 的配置文件
 
@@ -119,25 +143,59 @@ module.exports = {
 };
 ```
 
-module.exports = { ... };
+> const path = require("path);
+
+这行引入了 Node.js 的 path 模块，用于处理文件路径。
+
+> module.exports = { ... };
 
 这行代码导出一个对象，该对象定义了 Webpack 的配置。通过 module.exports 导出的配置，Webpack 在运行时会自动读取。
 
-entry: "./a.js",
+> entry: "./a.js",
 
 entry 属性指定了 Webpack 打包的入口文件。在这个例子中，入口文件是当前目录下的 a.js。Webpack 会从这个文件开始，分析所有依赖的模块，并将它们打包。
-output: { ... }
+
+> output: { ... }
 
 output 属性定义了 Webpack 打包后的输出设置。
 path: path.resolve(\_\_dirname, ""),：path 属性指定了输出文件的存放目录。path.resolve(\_\_dirname, "")使用 path 模块的 resolve 方法，将路径解析为绝对路径。在这里，它解析当前文件所在目录的绝对路径（\_\_dirname 是 Node.js 中的一个全局变量，表示当前执行脚本所在的目录）。
 filename: "bundle.js",：filename 属性指定了输出文件的名称。在这个例子中，打包后的文件名为 bundle.js。
-mode: "none",
+
+> mode: "none",
 
 mode 属性指定了 Webpack 的模式。Webpack 有三种模式：development（开发模式）、production（生产模式）和 none（无任何默认优化）。在这个例子中，模式被设置为 none，意味着不启用任何默认优化配置。
 
 ### demo2
 
-Webpack 在进行打包的时候，对所有引入的资源文件，都当作模块来处理。但 Webpack 自身不支持 CSS 文件或图片文件的处理。Webpack 在处理该模块的时候，会在控制台报错：Module parse failed…You may need an appropriate loader to handle this file type.你需要你个合适的 loader 来处理该文件类型。
+```javascript
+//a.js
+import "./b.css";
+```
+
+```css
+/*b.css*/
+.hello {
+  margin: 30px;
+  color: blue;
+}
+```
+
+```html
+<!--index.html-->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <script src="./a.js"></script>
+  </head>
+  <body>
+    <div class="hello">Hello, Loader</div>
+  </body>
+</html>
+```
+
+Webpack 在进行打包的时候，对所有引入的资源文件，都当作模块来处理。但 Webpack 自身不支持 CSS 文件或图片文件的处理。Webpack 在处理该模块的时候，会在控制台报错：
+
+Module parse failed…You may need an appropriate loader to handle this file type.你需要你个合适的 loader 来处理该文件类型。
 
 当 Webpack 自身无法处理某种类型的文件的时候，我们就可以通过配置特定的 loader，赋予 Webpack 来处理该类型文件的能力。
 
