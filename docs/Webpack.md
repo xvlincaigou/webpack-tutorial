@@ -193,6 +193,19 @@ import "./b.css";
 </html>
 ```
 
+```javascript
+// webpack.config.js
+const path = require("path");
+module.exports = {
+  entry: "./a.js",
+  output: {
+    path: path.resolve(__dirname, ""),
+    filename: "bundle.js",
+  },
+  mode: "none",
+};
+```
+
 Webpack 在进行打包的时候，对所有引入的资源文件，都当作模块来处理。但 Webpack 自身不支持 CSS 文件或图片文件的处理。Webpack 在处理该模块的时候，会在控制台报错：
 
 Module parse failed…You may need an appropriate loader to handle this file type.你需要你个合适的 loader 来处理该文件类型。
@@ -245,11 +258,7 @@ use 值是一个数组，每一项是一个 loader。loader 的执行顺序是�
 
 ### 准备 src
 
-### 解析一个文件并提取其依赖关系
-
-把文件内容解析成字符串，然后用正则语言找到`import`和`export`语句（？）
-
-我们不应该重复造轮子！
+### 解析一个文件
 
 `@babel/parser` 是 `Babel` 的一部分，用于将 JavaScript 代码解析成抽象语法树（AST）。这对于代码转换、静态分析等任务非常有用。
 
@@ -280,13 +289,12 @@ function getAST(filename) {
     sourceType: "module",
   });
 
-  console.log(ast);
   return ast;
 }
 
 // 调用 getAST 函数，传入要解析的文件路径，这里是 "./src/entry.js"
 // 这行代码实际执行了 AST 的获取过程
-getAST("./src/entry.js");
+console.log(getAST("./src/entry.js"));
 ```
 
 ```shell
@@ -297,7 +305,11 @@ node ./bundler.js
 
 [更加详细的解读](https://dev.to/marvinjude/abstract-syntax-trees-and-practical-applications-in-javascript-4a3)
 
-### 递归解析依赖
+### 解析依赖
+
+把文件内容解析成字符串，然后用正则语言找到`import`和`export`语句（？）
+
+我们不应该重复造轮子！
 
 生成抽象语法树后，便可以去查找代码中的依赖，我们可以自己写查询方法递归的去查找，也可以使用 `@babel/traverse` 进行查询，`@babel/traverse` 模块维护整个树的状态，并负责替换，删除和添加节点。
 
@@ -324,7 +336,6 @@ function getImports(ast) {
       imports.push(node.source.value);
     },
   });
-  console.log(imports);
   return imports;
 }
 
@@ -399,6 +410,9 @@ function createGraph(entry) {
 
 ### 打包
 
+1. 需要把抽象语法树转化为浏览器看得懂的代码。
+2. 仍然要保持之前模块当中的引用，不能冲突。
+
 ```shell
 npm install @babel/preset-env --save-dev
 ```
@@ -448,6 +462,7 @@ function bundle(graph) {
   });
 
   // 构建最终的打包代码，使用立即执行函数表达式 (IIFE) 封装模块定义
+  // 可以参照这篇文章：https://segmentfault.com/a/1190000042609685
   const bundledCode = `
     (function (modules) {
       // 定义 require 函数，用于加载模块
